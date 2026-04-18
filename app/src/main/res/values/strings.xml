@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">FinanceTracker</string>
     <string name="title_activity_main">MainActivity</string>
+    <string name="question_one">Вопрос 1</string>
+    <string name="question_two">Вопрос 2</string>
+    <string name="question_three">Вопрос 3</string>
+    <string name="question_four">Вопрос 4</string>
+    <string name="question_five">Вопрос 5</string>
 </resources>
