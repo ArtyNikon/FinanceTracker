@@ -44,15 +44,17 @@ class DepositRecommendationViewModel : ViewModel() {
         selectedAnswer: String,
         isChecked: Boolean = false
     ) {
-        when (val answer = uiState.currentQuestion.answer) {
-            is Answer.RadioButton ->
-                uiState = uiState.copy(
-                    currentQuestion = uiState.currentQuestion.copy(
-                        answer = answer.copy(
-                            selected = selectedAnswer
-                        )
+        val index = uiState.currentQuestionIndex
+        val currentQuestion = uiState.questions[index]
+
+        val updatedQuestion = when (val answer = currentQuestion.answer) {
+            is Answer.RadioButton -> {
+                currentQuestion.copy(
+                    answer = answer.copy(
+                        selected = selectedAnswer
                     )
                 )
+            }
 
             is Answer.CheckBox -> {
                 val newSelected =
@@ -62,15 +64,21 @@ class DepositRecommendationViewModel : ViewModel() {
                         answer.selected - selectedAnswer
                     }
 
-                uiState = uiState.copy(
-                    currentQuestion = uiState.currentQuestion.copy(
-                        answer = answer.copy(
-                            selected = newSelected
-                        )
+                currentQuestion.copy(
+                    answer = answer.copy(
+                        selected = newSelected
                     )
                 )
             }
         }
+
+        val updatedQuestions = uiState.questions.toMutableList().apply {
+            this[index] = updatedQuestion
+        }
+
+        uiState = uiState.copy(
+            questions = updatedQuestions
+        )
     }
 
     private fun checkAnswer(answer: Answer): Boolean {

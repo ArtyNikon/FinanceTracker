@@ -43,10 +43,13 @@ import com.example.financetracker.recommendationwizard.ui.DepositRecommendationV
 
 @Composable
 fun DepositRecommendationScreen(
-    viewModel: DepositRecommendationViewModel = viewModel()
+    viewModel: DepositRecommendationViewModel = viewModel(),
+    onCloseClick: () -> Unit = {}
 ) {
-
-
+    WizardQuestionScreen(
+        onCloseClick = {},
+        viewModel = viewModel
+    )
 }
 
 //@Preview

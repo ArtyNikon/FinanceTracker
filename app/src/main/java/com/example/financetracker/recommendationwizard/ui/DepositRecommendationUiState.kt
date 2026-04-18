@@ -5,6 +5,8 @@ import com.example.financetracker.recommendationwizard.domain.Question
 data class DepositRecommendationUiState(
     val questions: List<Question>,
     val currentQuestionIndex: Int,
-    val currentQuestion: Question = questions[currentQuestionIndex],
     val isWizardFinished: Boolean = false
-)
+) {
+    val currentQuestion: Question
+        get() = questions[currentQuestionIndex]
+}
