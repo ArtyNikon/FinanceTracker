@@ -58,7 +58,7 @@ object WizardQuestionsProvider {
                 )
             ),
             Question(
-                questionText = "Вопрос 4",
+                questionText = "Вопрос 7",
                 answer = Answer.CheckBox(
                     list = listOf(
                         "Ответ 1",
