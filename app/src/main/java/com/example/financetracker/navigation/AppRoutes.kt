@@ -17,6 +17,11 @@ sealed interface AppRoute {
 
     @Serializable
     data object Profile : AppRoute
+
+    @Serializable
+    data class DepositDetail(
+        val depositId: Long
+    )
 }
 
 @Serializable
@@ -28,7 +33,4 @@ sealed interface DepositWizardRoute {
 
     @Serializable
     data object Question : DepositWizardRoute
-
-    @Serializable
-    data object Finish : DepositWizardRoute
 }

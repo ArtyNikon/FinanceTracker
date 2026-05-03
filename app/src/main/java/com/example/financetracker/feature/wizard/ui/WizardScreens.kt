@@ -16,25 +16,35 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,11 +55,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.financetracker.R
 import com.example.financetracker.core.ui.AppDimens
 import com.example.financetracker.feature.wizard.domain.Answer
 import com.example.financetracker.feature.wizard.domain.Question
+import com.example.financetracker.ui.theme.AppColors
 import com.example.financetracker.ui.theme.FinanceTrackerTheme
 import kotlinx.coroutines.delay
 
@@ -59,52 +71,21 @@ fun WizardWelcomeScreen(
     onCloseClick: () -> Unit
 ) {
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = AppDimens.ScreenHorizontalPadding,
-                        vertical = AppDimens.ScreenTopPadding
-                    ),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onCloseClick) {
-                    Text("Закрыть")
-                }
-            }
-        },
+        containerColor = Color.White,
         bottomBar = {
-            Surface(
-                color = MaterialTheme.colorScheme.background
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp)
-                ) {
-                    Button(
-                        onClick = onNextClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(AppDimens.CardCornerRadius)
-                    ) {
-                        Text(
-                            text = "Начать",
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-                }
-            }
+            WizardBottomActions(
+                buttonText = "Продолжить",
+                onPrimaryClick = onNextClick,
+                onCancelClick = onCloseClick
+            )
         }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.White)
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
             Card(
                 modifier = Modifier
@@ -112,7 +93,7 @@ fun WizardWelcomeScreen(
                     .height(300.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = Color.White
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
@@ -129,7 +110,8 @@ fun WizardWelcomeScreen(
             Text(
                 text = "Зададим пару вопросов",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -137,8 +119,51 @@ fun WizardWelcomeScreen(
             Text(
                 text = "Узнаем, что для вас важно, и подберём подходящие финансовые решения.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = AppColors.TextSecondary
             )
+        }
+    }
+}
+
+@Composable
+private fun WizardBottomActions(
+    buttonText: String,
+    onPrimaryClick: () -> Unit,
+    onCancelClick: (() -> Unit)? = null
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 20.dp, vertical = 14.dp)
+    ) {
+        Button(
+            onClick = onPrimaryClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AppColors.PrimaryBlue,
+                contentColor = Color.White
+            )
+        ) {
+            Text(
+                text = buttonText,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        if (onCancelClick != null) {
+            TextButton(
+                onClick = onCancelClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Отмена",
+                    color = AppColors.PrimaryBlue
+                )
+            }
         }
     }
 }
@@ -162,10 +187,38 @@ fun WizardQuestionScreen(
 ) {
     val uiState = viewModel.uiState
     val currentQuestion = uiState.currentQuestion
+    val currentAnswer = currentQuestion.answer
     val isLastQuestion = uiState.currentQuestionIndex == uiState.questions.lastIndex
 
+    var showFinishLoading by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    val bottomButtonText = if (isLastQuestion) {
+        "Завершить"
+    } else {
+        "Продолжить"
+    }
+
+    val onBottomButtonClick = {
+        if (showFinishLoading) {
+            Unit
+        } else if (isLastQuestion) {
+            showFinishLoading = true
+        } else {
+            viewModel.onNextClick()
+        }
+    }
+
+    LaunchedEffect(showFinishLoading) {
+        if (showFinishLoading) {
+            delay(3000)
+            onFinishClick()
+        }
+    }
+
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.White,
         topBar = {
             WizardTopBar(
                 progress = uiState.progress,
@@ -176,51 +229,85 @@ fun WizardQuestionScreen(
         },
         bottomBar = {
             WizardPrimaryBottomBar(
-                buttonText = if (isLastQuestion) "Завершить" else "Продолжить",
-                onClick = if (isLastQuestion) onFinishClick else viewModel::onNextClick
+                buttonText = bottomButtonText,
+                onClick = onBottomButtonClick
             )
         }
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.White)
                 .padding(innerPadding)
-                .padding(
-                    horizontal = AppDimens.ScreenHorizontalPadding,
-                    vertical = AppDimens.ScreenTopPadding
-                )
+                .padding(horizontal = AppDimens.ScreenHorizontalPadding),
+            contentPadding = PaddingValues(
+                top = AppDimens.ScreenTopPadding,
+                bottom = AppDimens.SectionSpacingLarge
+            ),
+            verticalArrangement = Arrangement.spacedBy(AppDimens.SectionSpacingMedium)
         ) {
-            WizardQuestionCard(
-                currentQuestion = currentQuestion,
-                showError = uiState.showError
-            )
+            item {
+                WizardQuestionCard(
+                    currentQuestion = currentQuestion,
+                    showError = uiState.showError
+                )
+            }
 
-            Spacer(modifier = Modifier.height(AppDimens.SectionSpacingMedium))
-
-            when (val answer = currentQuestion.answer) {
+            when (currentAnswer) {
                 is Answer.RadioButton -> {
-                    WizardRadioAnswersList(
-                        answers = answer.list,
-                        selected = answer.selected,
-                        showError = uiState.showError,
-                        onAnswerClick = { selectedAnswer ->
-                            viewModel.onAnswerSelected(selectedAnswer)
-                        }
-                    )
+                    items(currentAnswer.list) { item ->
+                        WizardAnswerCard(
+                            title = item,
+                            selected = currentAnswer.selected == item,
+                            showError = uiState.showError,
+                            onClick = {
+                                viewModel.onAnswerSelected(item)
+                            },
+                            trailing = {
+                                RadioButton(
+                                    selected = currentAnswer.selected == item,
+                                    onClick = null,
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = AppColors.PrimaryBlue,
+                                        unselectedColor = AppColors.TextSecondary
+                                    )
+                                )
+                            }
+                        )
+                    }
                 }
 
                 is Answer.CheckBox -> {
-                    WizardCheckBoxAnswersList(
-                        answers = answer.list,
-                        selected = answer.selected,
-                        showError = uiState.showError,
-                        onCheckedChange = { selectedAnswer, isChecked ->
-                            viewModel.onAnswerSelected(selectedAnswer, isChecked)
-                        }
-                    )
+                    items(currentAnswer.list) { item ->
+                        val isChecked = currentAnswer.selected.contains(item)
+
+                        WizardAnswerCard(
+                            title = item,
+                            selected = isChecked,
+                            showError = uiState.showError,
+                            onClick = {
+                                viewModel.onAnswerSelected(item, !isChecked)
+                            },
+                            trailing = {
+                                Checkbox(
+                                    checked = isChecked,
+                                    onCheckedChange = null,
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = AppColors.PrimaryBlue,
+                                        uncheckedColor = AppColors.TextSecondary,
+                                        checkmarkColor = Color.White
+                                    )
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
+    }
+
+    if (showFinishLoading) {
+        RecommendationLoadingDialog()
     }
 }
 
@@ -236,78 +323,61 @@ fun WizardQuestionScreenPreview() {
 }
 
 @Composable
-fun WizardFinishScreen(
-    onCloseClick: () -> Unit
-) {
-    LaunchedEffect(Unit) {
-        delay(3000)
-        onCloseClick()
-    }
-
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center
+private fun RecommendationLoadingDialog() {
+    Dialog(
+        onDismissRequest = {}
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .size(72.dp)
+                        .clip(CircleShape)
+                        .background(AppColors.PrimaryBlueLight),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp),
-                            strokeWidth = 3.dp
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Text(
-                        text = "Подбираем рекомендации...",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        strokeWidth = 3.dp,
+                        color = AppColors.PrimaryBlue
                     )
                 }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = "Подбираем рекомендации...",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.Black,
+                    maxLines = 1
+                )
             }
         }
     }
 }
 
-@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Preview
 @Composable
-fun WizardFinishScreenPreview() {
-    FinanceTrackerTheme {
-        WizardFinishScreen(
-            onCloseClick = {}
-        )
-    }
+fun RecommendationLoadingDialogPreview(){
+    RecommendationLoadingDialog()
 }
 
-@Composable
+        @Composable
 private fun WizardTopBar(
     progress: Float,
     onCloseClick: () -> Unit,
@@ -317,6 +387,7 @@ private fun WizardTopBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .background(Color.White)
             .padding(horizontal = AppDimens.ScreenHorizontalPadding, vertical = 12.dp)
     ) {
         Surface(
@@ -325,9 +396,9 @@ private fun WizardTopBar(
                 .size(44.dp)
                 .clickable(onClick = onBackClick),
             shape = CircleShape,
+            color = Color.White,
             tonalElevation = 1.dp,
-            shadowElevation = 1.dp,
-            color = MaterialTheme.colorScheme.surface
+            shadowElevation = 1.dp
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -335,7 +406,8 @@ private fun WizardTopBar(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Назад"
+                    contentDescription = "Назад",
+                    tint = AppColors.PrimaryBlue
                 )
             }
         }
@@ -347,16 +419,32 @@ private fun WizardTopBar(
                 .width(170.dp)
                 .height(8.dp)
                 .clip(RoundedCornerShape(999.dp)),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
+            color = AppColors.ProgressGreen,
+            trackColor = AppColors.ProgressTrack
         )
 
         if (!isLastQuestion) {
-            TextButton(
-                onClick = onCloseClick,
-                modifier = Modifier.align(Alignment.CenterEnd)
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(44.dp)
+                    .clickable(onClick = onCloseClick),
+                shape = CircleShape,
+                color = Color.White,
+                tonalElevation = 1.dp,
+                shadowElevation = 1.dp
             ) {
-                Text("Закрыть")
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Закрыть",
+                        tint = AppColors.TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
@@ -367,32 +455,11 @@ private fun WizardPrimaryBottomBar(
     buttonText: String,
     onClick: () -> Unit
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Surface(
-            color = MaterialTheme.colorScheme.background
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-            ) {
-                Button(
-                    onClick = onClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(AppDimens.CardCornerRadius)
-                ) {
-                    Text(
-                        text = buttonText,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
-            }
-        }
-    }
+    WizardBottomActions(
+        buttonText = buttonText,
+        onPrimaryClick = onClick,
+        onCancelClick = null
+    )
 }
 
 @Composable
@@ -404,7 +471,7 @@ private fun WizardQuestionCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(AppDimens.CardCornerRadius),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = Color.White
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -414,7 +481,8 @@ private fun WizardQuestionCard(
             Text(
                 text = currentQuestion.questionText,
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -425,7 +493,11 @@ private fun WizardQuestionCard(
                     is Answer.CheckBox -> "Выберите один или несколько вариантов"
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (showError) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (showError) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    AppColors.TextSecondary
+                }
             )
         }
     }
@@ -496,15 +568,15 @@ private fun WizardAnswerCard(
     trailing: @Composable () -> Unit
 ) {
     val borderColor = when {
-        selected -> MaterialTheme.colorScheme.primary
-        showError -> Color(0xFFD32F2F)
-        else -> MaterialTheme.colorScheme.outlineVariant
+        selected -> AppColors.PrimaryBlue
+        showError -> MaterialTheme.colorScheme.error
+        else -> AppColors.Divider
     }
 
     val backgroundColor = if (selected) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
+        AppColors.PrimaryBlueLight
     } else {
-        MaterialTheme.colorScheme.surface
+        Color.White
     }
 
     Surface(
@@ -527,6 +599,7 @@ private fun WizardAnswerCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
+                color = Color.Black,
                 modifier = Modifier.weight(1f)
             )
 

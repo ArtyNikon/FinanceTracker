@@ -12,7 +12,8 @@ import com.example.financetracker.navigation.AppNavHost
 import com.example.financetracker.navigation.isTopLevelDestination
 
 @Composable
-fun FinanceTrackerApp() {
+fun FinanceTrackerApp(
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
