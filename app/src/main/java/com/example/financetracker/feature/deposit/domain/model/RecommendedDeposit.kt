@@ -1,4 +1,4 @@
-package com.example.financetracker.feature.deposit.domain
+package com.example.financetracker.feature.deposit.domain.model
 
 data class RecommendedDeposit(
     val id: String,

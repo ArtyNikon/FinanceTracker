@@ -1,4 +1,4 @@
-package com.example.financetracker.feature.deposit.domain
+package com.example.financetracker.feature.deposit.domain.util
 
 import java.util.Locale
 

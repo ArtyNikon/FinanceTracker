@@ -1,4 +1,4 @@
-package com.example.financetracker.feature.deposit.ui
+package com.example.financetracker.feature.deposit.presentation.main
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -17,9 +17,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Percent
@@ -51,27 +53,97 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.financetracker.R
 import com.example.financetracker.core.ui.AppDimens
 import com.example.financetracker.core.ui.AppDimens.CardCornerRadius
 import com.example.financetracker.core.ui.AppDimens.ScreenTopPadding
 import com.example.financetracker.core.ui.AppDimens.SectionSpacingSmall
-import com.example.financetracker.feature.deposit.domain.Deposit
-import com.example.financetracker.feature.deposit.domain.toDays
-import com.example.financetracker.feature.deposit.domain.toMoney
-import com.example.financetracker.feature.deposit.domain.toMonths
-import com.example.financetracker.feature.deposit.domain.toRate
+import com.example.financetracker.feature.deposit.domain.model.Deposit
+import com.example.financetracker.feature.deposit.domain.model.InterestPayoutType
+import com.example.financetracker.feature.deposit.domain.model.ProductType
+import com.example.financetracker.feature.deposit.domain.util.toMoney
+import com.example.financetracker.feature.deposit.domain.util.toMonths
+import com.example.financetracker.feature.deposit.domain.util.toRate
+import com.example.financetracker.feature.deposit.presentation.adddeposit.AddDepositBottomSheet
+import com.example.financetracker.feature.deposit.presentation.adddeposit.AddDepositBottomSheetViewModel
+import com.example.financetracker.ui.theme.AppColors
 
 @Composable
 fun DepositScreen(
     onSetupRecommendationsClick: () -> Unit,
-    viewModel: DepositViewModel = viewModel()
+    onDepositClick: (Deposit) -> Unit,
+    viewModel: DepositViewModel,
+    addDepositBottomSheetViewModel: AddDepositBottomSheetViewModel
 ) {
-    val uiState = viewModel.uiState
 
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        DepositContent(
+            onSetupRecommendationsClick = onSetupRecommendationsClick,
+            onSortSelected = viewModel::onSortSelected,
+            onAddDepositClick = addDepositBottomSheetViewModel::show,
+            onDepositClick = onDepositClick,
+            state = state
+        )
+
+        AddDepositBottomSheet(
+            viewModel = addDepositBottomSheetViewModel
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DepositScreenPreview() {
+    DepositContent(
+        state = DepositState(
+            deposits = listOf(
+                Deposit(
+                    id = 1,
+                    bankName = "Т-Банк",
+                    productType = ProductType.DEPOSIT,
+                    rate = 18.1,
+                    amount = 200_000,
+                    termMonths = 9,
+                    openedAtMillis = System.currentTimeMillis(),
+                    payoutType = InterestPayoutType.MONTHLY
+                ),
+                Deposit(
+                    id = 2,
+                    bankName = "СберБанк",
+                    productType = ProductType.SAVINGS_ACCOUNT,
+                    rate = 15.5,
+                    amount = 150_000,
+                    termMonths = 6,
+                    openedAtMillis = System.currentTimeMillis(),
+                    payoutType = InterestPayoutType.DAILY_BALANCE
+                )
+            ),
+            recommendations = emptyList(),
+            selectedSort = DepositSortType.BY_AMOUNT
+        ),
+        onSetupRecommendationsClick = {},
+        onSortSelected = {},
+        onAddDepositClick = {},
+        onDepositClick = {}
+    )
+}
+
+@Composable
+fun DepositContent(
+    state: DepositState,
+    onSetupRecommendationsClick: () -> Unit,
+    onSortSelected: (DepositSortType) -> Unit,
+    onAddDepositClick: () -> Unit,
+    onDepositClick: (Deposit) -> Unit,
+    modifier: Modifier = Modifier
+) {
     LazyColumn(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(horizontal = AppDimens.ScreenHorizontalPadding),
         contentPadding = PaddingValues(
@@ -91,9 +163,9 @@ fun DepositScreen(
 
         item {
             DepositSummaryCard(
-                totalAmount = uiState.totalAmount,
-                averageRate = uiState.averageRate,
-                expectedIncome = uiState.expectedIncome
+                totalAmount = state.totalAmount,
+                averageRate = state.averageRate,
+                expectedIncome = "100"//доделать логику расчёта дохода со дня открытия счёта/ов + ставка
             )
         }
 
@@ -103,7 +175,8 @@ fun DepositScreen(
 
         item {
             DepositSectionHeader(
-                onSortSelected = viewModel::onSortSelected
+                selectedSortType = state.selectedSort,
+                onSortSelected = onSortSelected
             )
         }
 
@@ -113,7 +186,7 @@ fun DepositScreen(
 
         item {
             AddDepositButton(
-                onClick = viewModel::onAddDepositClick
+                onClick = onAddDepositClick
             )
         }
 
@@ -122,28 +195,20 @@ fun DepositScreen(
         }
 
         itemsIndexed(
-            items = uiState.deposits,
+            items = state.deposits,
             key = { _, item -> item.id }
         ) { index, item ->
             DepositItem(
                 item = item,
-                onClick = { viewModel.onDepositClick(item) },
+                onClick = { onDepositClick(item) },
                 bankLogo = painterResource(R.drawable.bank_icon)
             )
 
-            if (index != uiState.deposits.lastIndex) {
+            if (index != state.deposits.lastIndex) {
                 Spacer(modifier = Modifier.height(12.dp))
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DepositScreenPreview() {
-    DepositScreen(
-        onSetupRecommendationsClick = {}
-    )
 }
 
 @Composable
@@ -155,14 +220,15 @@ private fun DepositHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "Вклады",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f)
-        )
+        Column {
+            Text(
+                text = "Вклады",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
 
-        Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.height(4.dp))
+        }
 
         RecommendationCtaButton(
             onClick = onSetupRecommendationsClick
@@ -348,6 +414,7 @@ private fun SummaryMetric(
 
 @Composable
 private fun DepositSectionHeader(
+    selectedSortType: DepositSortType,
     onSortSelected: (DepositSortType) -> Unit
 ) {
     Row(
@@ -362,6 +429,7 @@ private fun DepositSectionHeader(
         )
 
         SortButton(
+            selectedSortType = selectedSortType,
             onSortSelected = onSortSelected
         )
     }
@@ -372,43 +440,69 @@ private fun DepositSectionHeader(
 fun DepositsSectionHeaderPreview() {
     PreviewContainer {
         DepositSectionHeader(
-            onSortSelected = {}
+            onSortSelected = {},
+            selectedSortType = DepositSortType.BY_PROFIT,
         )
     }
 }
 
 @Composable
 private fun SortButton(
+    selectedSortType: DepositSortType,
     onSortSelected: (DepositSortType) -> Unit
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
 
     Box {
         Surface(
-            modifier = Modifier.clickable { expanded = true },
-            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier
+                .size(48.dp)
+                .clickable { expanded = true },
+            shape = CircleShape,
+            color = Color.White,
             tonalElevation = 1.dp,
-            shadowElevation = 1.dp,
-            color = MaterialTheme.colorScheme.surface
+            shadowElevation = 2.dp
         ) {
             Box(
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.FilterList,
-                    contentDescription = "Сортировка"
+                    contentDescription = "Сортировка",
+                    tint = Color.Black
                 )
             }
         }
 
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .width(190.dp)
+                .background(Color.White)
         ) {
             DepositSortType.entries.forEach { sortType ->
+                val selected = selectedSortType == sortType
+
                 DropdownMenuItem(
-                    text = { Text(sortType.title) },
+                    text = {
+                        Text(
+                            text = sortType.title,
+                            color = if (selected) AppColors.PrimaryBlue else Color.Black,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    },
+                    trailingIcon = {
+                        if (selected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = AppColors.PrimaryBlue,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    },
                     onClick = {
                         expanded = false
                         onSortSelected(sortType)
@@ -503,7 +597,7 @@ fun DepositItem(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 Text(
-                    text = item.productName,
+                    text = item.productType.label,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -513,7 +607,7 @@ fun DepositItem(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "${item.amount.toMoney()} • ${item.term.toMonths()} • ${item.daysLeft.toDays()}",
+                    text = "${item.amount.toMoney()} • ${item.termMonths.toMonths()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
